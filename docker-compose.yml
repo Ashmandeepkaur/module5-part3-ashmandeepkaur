@@ -1,0 +1,72 @@
+version: "3.8"
+
+services:
+  # MongoDB Database
+  mongo:
+    image: mongo:6
+    restart: always
+    volumes:
+      - mongo_data:/data/db
+    networks:
+      - prf_network
+
+  # Backend (Python Flask)
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    ports:
+      - "5000:5000"
+    environment:
+      - MONGO_URI=mongodb://mongo:27017/bank_app
+      - SECRET_KEY=supersecretkey
+    depends_on:
+      - mongo
+    networks:
+      - prf_network
+
+  # Transactions (Node.js or Express)
+  transactions:
+    build:
+      context: ./transactions
+    environment:
+      - MONGO_URI=mongodb://mongo:27017
+      - PORT=4000
+    ports:
+      - "4000:4000"
+    depends_on:
+      - mongo
+    networks:
+      - prf_network
+
+  # Student Portfolio (Frontend)
+  studentportfolio:
+    build:
+      context: ./studentportfolio
+    # This serves static files, no port mapping needed
+    networks:
+      - prf_network
+
+  # Nginx Reverse Proxy
+  nginx:
+    image: nginx:alpine
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./studentportfolio:/usr/share/nginx/html:ro
+    depends_on:
+      - backend
+      - transactions
+      - studentportfolio
+    networks:
+      - prf_network
+
+# Named volumes
+volumes:
+  mongo_data:
+
+# Custom network for inter-container communication
+networks:
+  prf_network:
+    driver: bridge
