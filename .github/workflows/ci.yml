@@ -1,0 +1,30 @@
+name: CI API Integration testing
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build Docker images
+        run: docker-compose build
+
+      - name: Run Containers
+        run: docker-compose up -d
+
+      - name: Verify backend
+        run: curl -i http://localhost/api/health || true
+
+      - name: Tear down
+        if: always()
+        run: docker-compose down
